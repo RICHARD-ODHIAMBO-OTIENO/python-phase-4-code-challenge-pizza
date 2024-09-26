@@ -20,9 +20,14 @@ class Restaurant(db.Model, SerializerMixin):
     name = db.Column(db.String)
     address = db.Column(db.String)
 
-    # add relationship
+    # relationship with RestaurantPizza
+    restaurant_pizzas = db.relationship('RestaurantPizza', cascade="all, delete", backref='restaurant')
+    
+    # relationship with Pizza through RestaurantPizza
+    pizzas = association_proxy('restaurant_pizzas', 'pizza')
 
-    # add serialization rules
+    # serialization rules
+    serialize_rules = ('-restaurant_pizzas.restaurant', '-pizzas.restaurants')
 
     def __repr__(self):
         return f"<Restaurant {self.name}>"
@@ -35,9 +40,14 @@ class Pizza(db.Model, SerializerMixin):
     name = db.Column(db.String)
     ingredients = db.Column(db.String)
 
-    # add relationship
+    # relationship with RestaurantPizza
+    restaurant_pizzas = db.relationship('RestaurantPizza', cascade="all, delete", backref='pizza')
 
-    # add serialization rules
+    # relationship with Restaurant through RestaurantPizza
+    restaurants = association_proxy('restaurant_pizzas', 'restaurant')
+
+    # serialization rules
+    serialize_rules = ('-restaurant_pizzas.pizza', '-restaurants.pizzas')
 
     def __repr__(self):
         return f"<Pizza {self.name}, {self.ingredients}>"
@@ -49,11 +59,19 @@ class RestaurantPizza(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     price = db.Column(db.Integer, nullable=False)
 
-    # add relationships
+    # foreign keys
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=False)
+    pizza_id = db.Column(db.Integer, db.ForeignKey('pizzas.id'), nullable=False)
 
-    # add serialization rules
+    # validation for price between 1 and 30
+    @validates('price')
+    def validate_price(self, key, price):
+        if price < 1 or price > 30:
+            raise ValueError('Price must be between 1 and 30')
+        return price
 
-    # add validation
+    # serialization rules
+    serialize_rules = ('-restaurant.restaurant_pizzas', '-pizza.restaurant_pizzas')
 
     def __repr__(self):
         return f"<RestaurantPizza ${self.price}>"
